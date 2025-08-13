@@ -127,8 +127,8 @@
 
 			// REEF directly beneath the device, covered by a mesh/net
 			reefGroup = createCoralReef();                 // y ~ 0 (sits on seafloor)
-			netMesh   = createReefNet(1.05, 0.75);         // radius, domeHeight
-			netMesh.position.y = 0.0;                      // base at seafloor; dome rises to ~0.75
+			netMesh   = createReefNet(1.05, 0.95);         // radius, domeHeight
+			netMesh.position.y = -140 * mm;                      // base at seafloor; dome rises to ~0.75
 
 			// Place the device ABOVE the mesh (clear separation)
 			device.position.set(0, 1.10, 0);               // bottom of device (~0.0) lifted to ~1.10
@@ -234,9 +234,9 @@
 			const wireGeo = new THREE.WireframeGeometry(geo);
 			const net = new THREE.LineSegments(
 				wireGeo,
-				new THREE.LineBasicMaterial({ color: 0x094a63, transparent: true, opacity: 0.7 })
+				new THREE.LineBasicMaterial({ color: 0x999999, transparent: true, opacity: 0.9 })
 			);
-			net.position.y = 0; // base on the seafloor
+			net.position.y = -100 * mm ; // base on the seafloor
 			return net;
 		}
 
