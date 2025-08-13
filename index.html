@@ -310,9 +310,9 @@
 			fanGroup.add(hub);
 
 			// 2. Define the 2D shape of a single propeller blade
-			const bladeLength = motorDiameter * 0.35;
-			const bladeBaseWidth = motorDiameter * 0.2;
-			const bladeTipWidth = motorDiameter * 0.3;
+			const bladeLength = motorDiameter * 0.4;
+			const bladeBaseWidth = motorDiameter * 0.1;
+			const bladeTipWidth = motorDiameter * 0.2;
 			
 			const bladeShape = new THREE.Shape();
 			// The shape is defined along the Y-axis for easier rotation later
@@ -364,7 +364,7 @@
 			motorGroup.position.set(-650 * mm, 400 * mm, 0);
 			
 			// Position the propeller at the back of the motor housing with more clearance
-			fanGroup.position.x = -motorDepth * 0.5 - 0 * mm;
+			fanGroup.position.x = -motorDepth * 0.5 - 30 * mm;
 
 			return motorGroup;
 		}
