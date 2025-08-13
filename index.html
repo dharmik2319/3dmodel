@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Interactive 3D Device Model</title>
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+			font-family: 'Inter', sans-serif;
+			background-color: #f0f0f0;
+			color: #333;
+		}
+		#info {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			padding: 10px 15px;
+			background: rgba(255, 255, 255, 0.7);
+			border: 1px solid #ccc;
+			border-radius: 8px;
+			max-width: 300px;
+		}
+		#info h1 {
+			font-size: 1.2em;
+			margin: 0 0 5px 0;
+		}
+		#info p {
+			font-size: 0.9em;
+			margin: 0;
+		}
+		#loader {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			color: #333;
+			font-size: 1.2em;
+		}
+		canvas {
+			display: block;
+		}
+	</style>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head><body>
+	<div id="info">
+		<h1>Custom Device Assembly</h1>
+		<p>An interactive 3D model based on provided specifications. Drag to rotate, scroll to zoom, right-click to pan.</p>
+	</div>
+	<div id="loader">Loading 3D Scene...</div>
+
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+			}
+		}
+	</script>
+
+	<script type="module">
+		import * as THREE from 'three';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+		// --- SCENE SETUP ---
+		let scene, camera, renderer, controls, fanGroup; // fanGroup is now accessible globally
+		const loaderElement = document.getElementById('loader');
+
+		// Conversion factor: All provided measurements are in mm.
+		// three.js works in arbitrary units, we'll treat 1 unit = 1 meter.
+		const mm = 0.001; 
+
+		function init() {
+			// Scene
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0xf0f0f0); // Light background
+
+			// Camera
+			camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+			camera.position.set(2, 2, 3);
+			camera.lookAt(scene.position);
+
+			// Renderer
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.shadowMap.enabled = true;
+			renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+			document.body.appendChild(renderer.domElement);
+
+			// Controls
+			controls = new OrbitControls(camera, renderer.domElement);
+			controls.enableDamping = true;
+			controls.dampingFactor = 0.05;
+			controls.minDistance = 1;
+			controls.maxDistance = 20;
+			controls.target.set(0, 0.5, 0);
+
+			// Lighting (brighter)
+			const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // Increased intensity
+			scene.add(ambientLight);
+
+			const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0); // Increased intensity
+			directionalLight.position.set(5, 10, 7.5);
+			directionalLight.castShadow = true;
+			directionalLight.shadow.mapSize.width = 2048;
+			directionalLight.shadow.mapSize.height = 2048;
+			directionalLight.shadow.camera.near = 0.5;
+			directionalLight.shadow.camera.far = 50;
+			scene.add(directionalLight);
+			
+			// Ground plane (lighter)
+			const groundGeo = new THREE.PlaneGeometry(30, 30);
+			const groundMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.8 }); // Lighter ground
+			const ground = new THREE.Mesh(groundGeo, groundMat);
+			ground.rotation.x = -Math.PI / 2;
+			ground.receiveShadow = true;
+			scene.add(ground);
+
+			// --- MATERIALS ---
+			const marineAluminiumMaterial = new THREE.MeshStandardMaterial({
+				color: 0xFBF4F4,
+				metalness: 0.9,
+				roughness: 0.2,
+				envMapIntensity: 0.8
+			});
+			
+			const titaniumMaterial = new THREE.MeshStandardMaterial({
+				color: 0xFBF4F4,
+				metalness: 1.0,
+				roughness: 0.15,
+				envMapIntensity: 0.9
+			});
+
+			const insulatedWireMaterial = new THREE.MeshStandardMaterial({
+				color: 0x111111,
+				roughness: 0.8,
+				metalness: 0.1
+			});
+
+			// --- BUILD MODEL ---
+			const device = new THREE.Group();
+			
+			device.add(createHexFrame(marineAluminiumMaterial));
+			device.add(createSolarArray(marineAluminiumMaterial));
+			device.add(createCamera());
+			device.add(createUnderwaterAntenna(marineAluminiumMaterial));
+			device.add(createExhaustMotor());
+			device.add(createElectrodeSystem(titaniumMaterial, insulatedWireMaterial, marineAluminiumMaterial));
+			
+			scene.add(device);
+
+			// Hide loader and start animation
+			loaderElement.style.display = 'none';
+			animate();
+		}
+
+		// --- COMPONENT CREATION FUNCTIONS ---
+
+		function createHexFrame(material) {
+			const frameGroup = new THREE.Group();
+			const diameter = 1500 * mm;
+			const height = 750 * mm;
+			const thickness = 15 * mm;
+			const radius = diameter / 2;
+
+			const domeGeometry = new THREE.CylinderGeometry(radius, radius, height, 6);
+			const domeMesh = new THREE.Mesh(domeGeometry, material);
+			domeMesh.position.y = height / 2;
+			domeMesh.castShadow = true;
+			domeMesh.receiveShadow = true;
+			
+			const topPlateGeom = new THREE.CylinderGeometry(1200 * mm / 2, 1200 * mm / 2, thickness, 6);
+			const topPlateMesh = new THREE.Mesh(topPlateGeom, material);
+			topPlateMesh.position.y = height;
+			topPlateMesh.castShadow = true;
+			
+			frameGroup.add(domeMesh);
+			frameGroup.add(topPlateMesh);
+			
+			return frameGroup;
+		}
+
+		function createSolarArray(frameMaterial) {
+			const arrayGroup = new THREE.Group();
+			const panelWidth = 750 * mm;
+			const panelHeight = 700 * mm;
+			const panelDepth = 25 * mm;
+			const mountRingRadius = 1300 * mm / 2;
+			const mountHeight = 800 * mm;
+
+			const ringGeo = new THREE.TorusGeometry(mountRingRadius, 15 * mm, 16, 64);
+			const ring = new THREE.Mesh(ringGeo, frameMaterial);
+			ring.rotation.x = Math.PI / 2;
+			ring.position.y = mountHeight;
+			arrayGroup.add(ring);
+
+			const panelMaterial = new THREE.MeshStandardMaterial({ color: 0x1F3B73, roughness: 0.4 });
+			const panelGeometry = new THREE.BoxGeometry(panelWidth, panelHeight, panelDepth);
+
+			const positions = [
+				{ x: 0, z: 300 * mm },
+				{ x: 0, z: -300 * mm }
+			];
+
+			positions.forEach(p => {
+				const panelHolder = new THREE.Group();
+				panelHolder.position.set(p.x, mountHeight, p.z);
+				panelHolder.lookAt(0, mountHeight, 0);
+
+				const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+				panel.rotation.x = THREE.MathUtils.degToRad(45);
+				panel.castShadow = true;
+				
+				panelHolder.add(panel);
+				arrayGroup.add(panelHolder);
+			});
+			
+			return arrayGroup;
+		}
+		
+		function createCamera() {
+			const cameraGroup = new THREE.Group();
+			const bodySize = 300 * mm;
+			const bodyGeo = new THREE.BoxGeometry(bodySize, bodySize, bodySize);
+			const bodyMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.4});
+			const body = new THREE.Mesh(bodyGeo, bodyMat);
+			
+			const lensGeo = new THREE.CylinderGeometry(bodySize * 0.4, bodySize * 0.4, bodySize * 0.2, 32);
+			const lensMat = new THREE.MeshStandardMaterial({color: 0x000000, roughness: 0.1, metalness: 0.2});
+			const lens = new THREE.Mesh(lensGeo, lensMat);
+			lens.rotation.z = Math.PI / 2;
+			lens.position.x = bodySize / 2;
+			
+			cameraGroup.add(body);
+			cameraGroup.add(lens);
+			
+			cameraGroup.position.set(625 * mm, 400 * mm, 0 * mm);
+			cameraGroup.castShadow = true;
+			return cameraGroup;
+		}
+		
+		function createUnderwaterAntenna(material) {
+			const antennaGroup = new THREE.Group();
+			const housingHeight = 300 * mm;
+			const housingRadius = 100 * mm;
+			
+			const housingGeo = new THREE.CylinderGeometry(housingRadius, housingRadius, housingHeight, 32);
+			const housing = new THREE.Mesh(housingGeo, material);
+			housing.castShadow = true;
+
+			const faceRadius = housingRadius * 0.9;
+			const faceHeight = 20 * mm;
+			const faceGeo = new THREE.CylinderGeometry(faceRadius, faceRadius, faceHeight, 32);
+			const faceMat = new THREE.MeshStandardMaterial({ color: 0x222228, roughness: 0.8 });
+			const face = new THREE.Mesh(faceGeo, faceMat);
+			face.position.y = -housingHeight / 2;
+			face.castShadow = true;
+
+			const plateSize = housingRadius * 1.5;
+			const plateHeight = 25 * mm;
+			const plateGeo = new THREE.BoxGeometry(plateSize, plateHeight, plateSize);
+			const plate = new THREE.Mesh(plateGeo, material);
+			plate.position.y = -housingHeight / 2 - plateHeight / 2;
+
+			antennaGroup.add(housing);
+			antennaGroup.add(face);
+			antennaGroup.add(plate);
+			
+			const frameTopHeight = 750 * mm;
+			antennaGroup.position.set(-650 * mm, frameTopHeight + housingHeight / 2, 450 * mm);
+			
+			return antennaGroup;
+		}
+
+		/**
+		 * Creates the motor housing and the new marine-style propeller.
+		 * The propeller is assigned to the global `fanGroup` variable for animation.
+		 */
+		function createExhaustMotor() {
+			const motorGroup = new THREE.Group();
+			const motorDiameter = 300 * mm;
+			const motorDepth = 150 * mm;
+
+			// Create the motor housing cylinder
+			const housingGeo = new THREE.CylinderGeometry(motorDiameter / 2, motorDiameter / 2, motorDepth, 32);
+			const housingMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.5 });
+			const housing = new THREE.Mesh(housingGeo, housingMat);
+			housing.rotation.z = Math.PI / 2; // Aligns the cylinder's length along the X-axis
+			
+			// --- NEW MARINE PROPELLER ---
+			fanGroup = new THREE.Group(); // Assign to the global variable for animation
+			
+			const propellerMaterial = new THREE.MeshStandardMaterial({
+				color: 0xdaa520, // A goldenrod/brass color to match the image
+				metalness: 0.85,
+				roughness: 0.3,
+				side: THREE.DoubleSide // Render both sides of the blade
+			});
+
+			// 1. Create the central hub of the propeller
+			const hubRadius = motorDiameter * 0.12;
+			const hubLength = 40 * mm;
+			const hubGeo = new THREE.CylinderGeometry(hubRadius, hubRadius, hubLength, 20);
+			const hub = new THREE.Mesh(hubGeo, propellerMaterial);
+			hub.rotation.z = Math.PI / 2; // Align hub's length with the X-axis
+			fanGroup.add(hub);
+
+			// 2. Define the 2D shape of a single propeller blade
+			const bladeLength = motorDiameter * 0.35;
+			const bladeBaseWidth = motorDiameter * 0.2;
+			const bladeTipWidth = motorDiameter * 0.3;
+			
+			const bladeShape = new THREE.Shape();
+			// The shape is defined along the Y-axis for easier rotation later
+			bladeShape.moveTo(-bladeBaseWidth / 2, 0);
+			bladeShape.lineTo(-bladeTipWidth / 2, bladeLength);
+			bladeShape.quadraticCurveTo(0, bladeLength * 1.05, bladeTipWidth / 2, bladeLength); // Curved tip
+			bladeShape.lineTo(bladeBaseWidth / 2, 0);
+			bladeShape.quadraticCurveTo(0, -bladeBaseWidth * 0.1, -bladeBaseWidth / 2, 0); // Curved base
+
+			// 3. Extrude the 2D shape into a 3D geometry
+			const extrudeSettings = {
+				depth: 4 * mm,
+				bevelEnabled: true,
+				bevelThickness: 1 * mm,
+				bevelSize: 1 * mm,
+				bevelSegments: 2
+			};
+			const bladeGeometry = new THREE.ExtrudeGeometry(bladeShape, extrudeSettings);
+			
+			// Move the blade's geometry so its base is at the edge of the hub
+			bladeGeometry.translate(0, hubRadius, 0);
+
+			// 4. Create 4 blades and arrange them around the hub
+			const numBlades = 4;
+			for (let i = 0; i < numBlades; i++) {
+				const blade = new THREE.Mesh(bladeGeometry, propellerMaterial);
+				
+				// Set rotation order: pitch (Y) is applied first, then placement (X).
+				blade.rotation.order = 'YXZ';
+
+				const angle = (i / numBlades) * Math.PI * 2;
+				const pitch = THREE.MathUtils.degToRad(30);
+
+				// Apply pitch by rotating around the blade's length axis (Y)
+				blade.rotation.y = pitch;
+
+				// Rotate the pitched blade into its final position around the main propeller axis (X)
+				blade.rotation.x = angle;
+
+				fanGroup.add(blade);
+			}
+
+			// Add components to the main motor group
+			motorGroup.add(housing);
+			motorGroup.add(fanGroup);
+			motorGroup.castShadow = true;
+			
+			// Position the entire motor assembly
+			motorGroup.position.set(-650 * mm, 400 * mm, 0);
+			
+			// Position the propeller at the back of the motor housing with more clearance
+			fanGroup.position.x = -motorDepth * 0.5 - 40 * mm;
+
+			return motorGroup;
+		}
+		
+		function createElectrodeSystem(anodeMat, wireMat, cathodeMat) {
+			const electrodeGroup = new THREE.Group();
+
+			const anodeGeo = new THREE.CylinderGeometry(100 * mm / 2, 100 * mm / 2, 300 * mm, 128);
+			const anode = new THREE.Mesh(anodeGeo, anodeMat);
+			anode.position.y = - (120 * mm / 2);
+			anode.castShadow = true;
+			electrodeGroup.add(anode);
+
+			const cathodeGroup = new THREE.Group();
+			
+			const cathodeBlockGeo = new THREE.CylinderGeometry(50 * mm / 2, 50 * mm / 2, 150 * mm, 32);
+			const cathodeBlock = new THREE.Mesh(cathodeBlockGeo, cathodeMat);
+			cathodeBlock.castShadow = true;
+
+			const wireLength = 400 * mm;
+			const wireRadius = 16 * mm / 2;
+			const startPoint = new THREE.Vector3(300 * mm, 0, 0);
+			const endPoint = new THREE.Vector3(300 * mm, -wireLength, 0);
+			
+			const curve = new THREE.CatmullRomCurve3([
+				startPoint,
+				new THREE.Vector3(300 * mm, -wireLength * 0.2, 50 * mm),
+				new THREE.Vector3(280 * mm, -wireLength * 0.8, -20 * mm),
+				endPoint
+			]);
+			
+			const wireGeo = new THREE.TubeGeometry(curve, 20, wireRadius, 8, false);
+			const wire = new THREE.Mesh(wireGeo, wireMat);
+			wire.castShadow = true;
+			
+			cathodeBlock.position.copy(endPoint);
+			cathodeBlock.position.y -= (80 * mm / 2);
+			
+			cathodeGroup.add(wire);
+			cathodeGroup.add(cathodeBlock);
+			electrodeGroup.add(cathodeGroup);
+			
+			return electrodeGroup;
+		}
+
+		// --- ANIMATION LOOP ---
+		function animate() {
+			requestAnimationFrame(animate);
+
+			// Animate the propeller blades
+			if (fanGroup) {
+				fanGroup.rotation.x += 0.1; // Adjust this value to change speed
+			}
+
+			controls.update();
+			renderer.render(scene, camera);
+		}
+
+		// --- EVENT LISTENERS ---
+		window.addEventListener('resize', () => {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		});
+
+		// --- START ---
+		init();
+
+	</script>
+</body>
+</html>
