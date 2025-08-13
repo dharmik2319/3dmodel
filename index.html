@@ -66,7 +66,7 @@
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 		// --- SCENE SETUP ---
-		let scene, camera, renderer, controls, fanGroup; // fanGroup is now accessible globally
+		let scene, camera, renderer, controls, fanGroup, fan2Group; // fanGroup is now accessible globally
 		const loaderElement = document.getElementById('loader');
 
 		// Conversion factor: All provided measurements are in mm.
@@ -148,7 +148,8 @@
 			device.add(createSolarArray(marineAluminiumMaterial));
 			device.add(createCamera());
 			device.add(createUnderwaterAntenna(marineAluminiumMaterial));
-			device.add(createExhaustMotor());
+			device.add(createExhaustMotor(600, 150, 150, fanGroup));
+			device.add(createExhaustMotor(600, 150, -150, fan2Group));
 			device.add(createElectrodeSystem(titaniumMaterial, insulatedWireMaterial, marineAluminiumMaterial));
 			
 			scene.add(device);
@@ -280,19 +281,20 @@
 		 * Creates the motor housing and the new marine-style propeller.
 		 * The propeller is assigned to the global `fanGroup` variable for animation.
 		 */
-		function createExhaustMotor() {
+		function createExhaustMotor(x, y, z, fangrp) {
 			const motorGroup = new THREE.Group();
-			const motorDiameter = 300 * mm;
+			const motorDiameter = 220 * mm;
 			const motorDepth = 150 * mm;
-
 			// Create the motor housing cylinder
+			console.log(fangrp);
 			const housingGeo = new THREE.CylinderGeometry(motorDiameter / 2, motorDiameter / 2, motorDepth, 32);
 			const housingMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.5 });
 			const housing = new THREE.Mesh(housingGeo, housingMat);
 			housing.rotation.z = Math.PI / 2; // Aligns the cylinder's length along the X-axis
 			
 			// --- NEW MARINE PROPELLER ---
-			fanGroup = new THREE.Group(); // Assign to the global variable for animation
+			fangrp = new THREE.Group(); // Assign to the global variable for animation
+//			fan2Group = new THREE.Group();
 			
 			const propellerMaterial = new THREE.MeshStandardMaterial({
 				color: 0xdaa520, // A goldenrod/brass color to match the image
@@ -307,7 +309,8 @@
 			const hubGeo = new THREE.CylinderGeometry(hubRadius, hubRadius, hubLength, 20);
 			const hub = new THREE.Mesh(hubGeo, propellerMaterial);
 			hub.rotation.z = Math.PI / 2; // Align hub's length with the X-axis
-			fanGroup.add(hub);
+			fangrp.add(hub);
+//			fan2Group.add(hub);
 
 			// 2. Define the 2D shape of a single propeller blade
 			const bladeLength = motorDiameter * 0.5;
@@ -352,19 +355,22 @@
 				// Rotate the pitched blade into its final position around the main propeller axis (X)
 				blade.rotation.x = angle;
 
-				fanGroup.add(blade);
+				fangrp.add(blade);
+//				fan2Group.add(blade);
 			}
 
 			// Add components to the main motor group
 			motorGroup.add(housing);
-			motorGroup.add(fanGroup);
+			motorGroup.add(fangrp);
 			motorGroup.castShadow = true;
 			
 			// Position the entire motor assembly
-			motorGroup.position.set(-650 * mm, 400 * mm, 0);
+			motorGroup.position.set(-x * mm, y * mm, z * mm);
 			
 			// Position the propeller at the back of the motor housing with more clearance
-			fanGroup.position.x = -motorDepth * 0.5 - 30 * mm;
+			fangrp.position.x = -motorDepth * 0.5 - 30 * mm;
+			console.log(fangrp)
+//			fan2Group.position.x = -motorDepth * 0.5 - 30 * mm;
 
 			return motorGroup;
 		}
@@ -414,10 +420,12 @@
 		// --- ANIMATION LOOP ---
 		function animate() {
 			requestAnimationFrame(animate);
-
+//			console.log(fanGroup);
 			// Animate the propeller blades
-			if (fanGroup) {
+			if (fanGroup | fan2Group) {
 				fanGroup.rotation.x += 0.065; // Adjust this value to change speed
+			
+				fan2Group.rotation.x += 0.065; // Adjust this value to change speed
 			}
 
 			controls.update();
