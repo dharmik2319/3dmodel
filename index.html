@@ -148,10 +148,10 @@
 			device.add(createSolarArray(marineAluminiumMaterial));
 			device.add(createCamera());
 			device.add(createUnderwaterAntenna(marineAluminiumMaterial));
-			const m1 = createExhaustMotor(600, 150, 150, fanGroup);
+			const m1 = createExhaustMotor(600, 150, 190, fanGroup);
 			fanGroup = m1.fangrp;
 			device.add(m1.motorGroup);
-			const m2 = createExhaustMotor(600, 150, -150, fan2Group);
+			const m2 = createExhaustMotor(600, 150, -190, fan2Group);
 			fan2Group = m2.fangrp;
 			device.add(m2.motorGroup);
 			device.add(createElectrodeSystem(titaniumMaterial, insulatedWireMaterial, marineAluminiumMaterial));
