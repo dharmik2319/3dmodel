@@ -148,8 +148,12 @@
 			device.add(createSolarArray(marineAluminiumMaterial));
 			device.add(createCamera());
 			device.add(createUnderwaterAntenna(marineAluminiumMaterial));
-			device.add(createExhaustMotor(600, 150, 150, fanGroup));
-			device.add(createExhaustMotor(600, 150, -150, fan2Group));
+			const m1 = createExhaustMotor(600, 150, 150, fanGroup);
+			fanGroup = m1.fangrp;
+			device.add(m1.motorGroup);
+			const m2 = createExhaustMotor(600, 150, -150, fan2Group);
+			fan2Group = m2.fangrp;
+			device.add(m2.motorGroup);
 			device.add(createElectrodeSystem(titaniumMaterial, insulatedWireMaterial, marineAluminiumMaterial));
 			
 			scene.add(device);
@@ -371,8 +375,7 @@
 			fangrp.position.x = -motorDepth * 0.5 - 30 * mm;
 			console.log(fangrp)
 //			fan2Group.position.x = -motorDepth * 0.5 - 30 * mm;
-
-			return motorGroup;
+			return { motorGroup, fangrp }
 		}
 		
 		function createElectrodeSystem(anodeMat, wireMat, cathodeMat) {
@@ -422,11 +425,9 @@
 			requestAnimationFrame(animate);
 //			console.log(fanGroup);
 			// Animate the propeller blades
-			if (fanGroup | fan2Group) {
-				fanGroup.rotation.x += 0.065; // Adjust this value to change speed
+			if (fanGroup) fanGroup.rotation.x += 0.065;
+			if (fan2Group) fan2Group.rotation.x += 0.065;
 			
-				fan2Group.rotation.x += 0.065; // Adjust this value to change speed
-			}
 
 			controls.update();
 			renderer.render(scene, camera);
