@@ -186,16 +186,16 @@
 
 		function createSolarArray(frameMaterial) {
 			const arrayGroup = new THREE.Group();
-			const panelWidth = 750 * mm;
+			const panelWidth = 700 * mm;
 			const panelHeight = 700 * mm;
 			const panelDepth = 25 * mm;
 			const mountRingRadius = 1300 * mm / 2;
-			const mountHeight = 800 * mm;
+			const mountHeight = 950 * mm;
 
 			const ringGeo = new THREE.TorusGeometry(mountRingRadius, 15 * mm, 16, 64);
 			const ring = new THREE.Mesh(ringGeo, frameMaterial);
 			ring.rotation.x = Math.PI / 2;
-			ring.position.y = mountHeight;
+			ring.position.y = mountHeight - 170 * mm;
 			arrayGroup.add(ring);
 
 			const panelMaterial = new THREE.MeshStandardMaterial({ color: 0x1F3B73, roughness: 0.4 });
