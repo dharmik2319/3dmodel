@@ -129,8 +129,8 @@
 			});
 			
 			const titaniumMaterial = new THREE.MeshStandardMaterial({
-				color: 0xFBF4F4,
-				metalness: 1.0,
+				color: 0xaaaaaa,
+				metalness: 0.4,
 				roughness: 0.15,
 				envMapIntensity: 0.9
 			});
@@ -378,10 +378,11 @@
 			anode.castShadow = true;
 			electrodeGroup.add(anode);
 
+			const cathodeMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.2 });
 			const cathodeGroup = new THREE.Group();
 			
 			const cathodeBlockGeo = new THREE.CylinderGeometry(50 * mm / 2, 50 * mm / 2, 150 * mm, 32);
-			const cathodeBlock = new THREE.Mesh(cathodeBlockGeo, cathodeMat);
+			const cathodeBlock = new THREE.Mesh(cathodeBlockGeo, cathodeMaterial);
 			cathodeBlock.castShadow = true;
 
 			const wireLength = 400 * mm;
